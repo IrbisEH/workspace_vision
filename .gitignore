@@ -1,0 +1,6 @@
+.env
+/.venv
+/frames
+/train_data/train
+/train_data/valid
+
