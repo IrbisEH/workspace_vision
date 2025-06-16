@@ -1,0 +1,30 @@
+Подготовка датасета
+Сбор данных: Соберите изображения, содержащие объекты, которые вы хотите распознавать. Убедитесь, что они представляют реальные условия, в которых будет использоваться модель (освещение, ракурсы, фон и т.д.).
+Аннотация: Разметьте изображения, указав координаты ограничивающих рамок (bounding boxes) и классы объектов. Формат YOLO требует текстовых файлов (.txt) для каждого изображения, где каждая строка содержит: <class_id> <x_center> <y_center> <width> <height> (нормализованные значения от 0 до 1).
+Инструменты для разметки: Roboflow, LabelImg, CVAT или MakeSense.
+
+Структура датасета:
+
+train_data/
+├── images/
+│   ├── train/
+│   ├── val/
+│   └── test/
+├── labels/
+│   ├── train/
+│   ├── val/
+│   └── test/
+└── data.yaml
+
+Файл data.yaml должен содержать:
+
+train: ./train_data/images/train
+val: ./train_data/images/val
+test: ./train_data/images/test
+nc: <число_классов>
+names: ['class1', 'class2', ...]
+
+
+
+Весы
+... /workspace_vision/runs/detect/train_some/weights/best.pt
