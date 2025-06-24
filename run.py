@@ -89,67 +89,42 @@ def put_fps_stat(frame: np.ndarray, fps: int) -> None:
     )
 
 def start(frames_dir: Path, mode: int) -> None:
+    mode = Modes(mode)
+    predict_res = None
     cap = cv2.VideoCapture(0)
 
     if not cap.isOpened():
-        print('Failed to open camera')
-        # TODO: логи
-        return
+        raise Exception('Error: failed to open camera')
 
     model = None
-    if Modes.DETECT in Modes(mode):
-        try:
-            if not WEIGHTS_PATH.exists():
-                raise Exception(f"Error: Model weights not found at {WEIGHTS_PATH}")
-            model = YOLO(str(WEIGHTS_PATH))
-        except Exception as e:
-            print(e)
-            return
-
-    mode = Modes(mode)
-    count_failed_frames = 0
-    last_time = None
-    last_save_time = None
-    last_save_if_not_detected_time = time.time()
-    detect_res = None
-    # fps = FpsModel()
+    if Modes.DETECT in mode:
+        if not WEIGHTS_PATH.exists():
+            raise Exception(f'Error: model weights not found at {WEIGHTS_PATH}')
+        model = YOLO(str(WEIGHTS_PATH))
 
     try:
         while True:
-            current_time = time.time()
             ret, frame = cap.read()
 
-            if not ret:
-                count_failed_frames += 1
-                continue
-            else:
-                count_failed_frames = 0
-
-            if count_failed_frames >= FAILED_FRAMES:
-                raise Exception("Error! Too many failed frames")
-
             if Modes.DETECT in mode:
-                detect_res = model.predict(frame, conf=RATE, verbose=False)
+                _frame = cv2.resize(frame, (IMGSZ, IMGSZ))
+                predict_res = model.predict(_frame, conf=RATE, verbose=False)
 
             if Modes.FRAME_SAVE_IF_NOT_DETECTED in mode:
-                boxes = [box for result in detect_res for box in result.boxes]
-                if not len(boxes) and (current_time - last_save_if_not_detected_time) > SAVE_INTERVAL_IF_NOT_DETECTED_SECONDS:
+                if predict_res is None:
+                    raise Exception('Error: can not save frame, while failed to detect frame')
+                boxes = [box for result in predict_res for box in result.boxes]
+                if not len(boxes):
                     save_frame(frames_dir, frame)
-                    last_save_if_not_detected_time = current_time
 
             if Modes.FRAME_STAT in mode:
-                if detect_res is not None:
-                    put_detect_stat(frame=frame, detect_res=detect_res)
-                # put_fps_stat(frame=frame, fps=fps.get())
+                pass
 
             if Modes.FRAME_SHOW in mode:
                 cv2.imshow('frame', frame)
 
             if Modes.FRAME_SAVE in mode:
-                if not last_save_time or (current_time - last_save_time >= SAVE_INTERVAL_SECONDS):
-                    print('Saving frame')
-                    last_save_time = current_time
-                    save_frame(frames_dir, frame)
+                save_frame(frames_dir, frame)
 
             if Modes.DETECT in mode:
                 pass
@@ -161,10 +136,7 @@ def start(frames_dir: Path, mode: int) -> None:
             elif key & 0xff == ord('s'):
                 save_frame(frames_dir=frames_dir, frame=frame)
 
-            last_time = current_time
-
     except Exception as e:
-        # TODO: логи
         print(e)
     finally:
         cap.release()
