@@ -1,6 +1,7 @@
 import os
 import cv2
 import time
+import math
 import numpy as np
 from pathlib import Path
 from enum import IntFlag
@@ -61,13 +62,29 @@ class FpsModel:
     def get(self):
         return int(sum(self.fps_vals) / len(self.fps_vals))
 
+class FrameSaver:
+    def __init__(self, frames_dir):
+        self.frame_dir = frames_dir
+        self.switch = 0
+        self.time_count = 0
+        self.last_time = int(time.time())
 
-def save_frame(frames_dir: Path, frame: np.ndarray) -> None:
-    if not os.path.isdir(frames_dir):
-        os.makedirs(frames_dir)
-    filename = f'{time.time()}.jpg'
-    frame_path = Path(frames_dir, filename)
-    cv2.imwrite(str(frame_path), frame)
+    def smart_save(self, frame: np.ndarray) -> None:
+        diff = int(time.time()) - self.last_time
+        if diff > self.time_count:
+            self.time_count += math.ceil(diff / 2)
+            self.last_time = int(time.time())
+
+    def save(self, frame: np.ndarray) -> None:
+        if not os.path.isdir(self.frame_dir):
+            os.makedirs(self.frame_dir)
+        filename = f'{time.time()}.jpg'
+        frame_path = Path(self.frame_dir, filename)
+        cv2.imwrite(frame_path, frame)
+
+    def reset(self):
+        self.time_count = 0
+        self.last_time = int(time.time())
 
 def put_detect_stat(frame: np.ndarray, detect_res: List[Results]) -> None:
     for r in detect_res:
@@ -91,6 +108,8 @@ def put_fps_stat(frame: np.ndarray, fps: int) -> None:
 def start(frames_dir: Path, mode: int) -> None:
     mode = Modes(mode)
     predict_res = None
+    saver = FrameSaver(FRAMES_DIR)
+
     cap = cv2.VideoCapture(0)
 
     if not cap.isOpened():
@@ -111,11 +130,11 @@ def start(frames_dir: Path, mode: int) -> None:
                 predict_res = model.predict(_frame, conf=RATE, verbose=False)
 
             if Modes.FRAME_SAVE_IF_NOT_DETECTED in mode:
-                if predict_res is None:
-                    raise Exception('Error: can not save frame, while failed to detect frame')
-                boxes = [box for result in predict_res for box in result.boxes]
-                if not len(boxes):
-                    save_frame(frames_dir, frame)
+                if predict_res:
+                    if not len([box for result in predict_res for box in result.boxes]):
+                        saver.smart_save(frame)
+                    else:
+                        saver.reset()
 
             if Modes.FRAME_STAT in mode:
                 pass
@@ -124,7 +143,7 @@ def start(frames_dir: Path, mode: int) -> None:
                 cv2.imshow('frame', frame)
 
             if Modes.FRAME_SAVE in mode:
-                save_frame(frames_dir, frame)
+                saver.save(frame)
 
             if Modes.DETECT in mode:
                 pass
@@ -134,7 +153,7 @@ def start(frames_dir: Path, mode: int) -> None:
             if key & 0xFF == ord('q'):
                 break
             elif key & 0xff == ord('s'):
-                save_frame(frames_dir=frames_dir, frame=frame)
+                saver.save(frame)
 
     except Exception as e:
         print(e)
