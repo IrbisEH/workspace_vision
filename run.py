@@ -14,17 +14,9 @@ APP_DIR = os.path.dirname(os.path.abspath(__file__))
 FRAMES_DIR = Path(APP_DIR, 'frames')
 WEIGHTS_PATH = Path(APP_DIR, 'best.pt')
 
-#TODO: work interval
-WORK_INTERVAL_SECONDS = 5
-SAVE_INTERVAL_SECONDS = 30
-SAVE_INTERVAL_IF_NOT_DETECTED_SECONDS = 1
-FAILED_FRAMES = 10
-AVERAGE_QUANTITY_FPS = 10
-RATE = 0.85
-
+RATE = 0.90
 IMGSZ = 640
 
-MODE = 0b10111
 
 class Modes(IntFlag):
     DETECT = 1                          # 0b00001
@@ -33,34 +25,6 @@ class Modes(IntFlag):
     FRAME_SAVE = 8                      # 0b01000
     FRAME_SAVE_IF_NOT_DETECTED = 16     # 0b10000
 
-
-#TODO: not work
-class FpsModel:
-    def __init__(self):
-        self.fps_start_time = 0
-        self.frame_count = 0
-        self.fps_vals = []
-
-    def start(self):
-        self.fps_start_time = time.time()
-
-    def next(self):
-        fps = self.frame_count / self.fps_start_time
-        self.fps_vals.append(fps)
-
-        if len(self.fps_vals) == AVERAGE_QUANTITY_FPS:
-            self.fps_vals.pop(0)
-
-        self.fps_start_time = time.time()
-        self.frame_count = 0
-
-    def reset(self):
-        self.fps_start_time = time.time()
-        self.frame_count = 0
-        self.fps_vals = []
-
-    def get(self):
-        return int(sum(self.fps_vals) / len(self.fps_vals))
 
 class FrameSaver:
     def __init__(self, frames_dir):
@@ -87,8 +51,9 @@ class FrameSaver:
         self.time_count = 0
         self.last_time = int(time.time())
 
-def put_detect_stat(frame: np.ndarray, detect_res: List[Results]) -> None:
-    for r in detect_res:
+
+def put_detect_stat(frame: np.ndarray, predict_res: List[Results]) -> None:
+    for r in predict_res:
         for b in r.boxes:
             x1, y1, x2, y2 = map(int, b.xyxy[0])
             conf = b.conf[0]
@@ -100,11 +65,8 @@ def put_detect_stat(frame: np.ndarray, detect_res: List[Results]) -> None:
                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2
             )
 
-def put_fps_stat(frame: np.ndarray, fps: int) -> None:
-    cv2.putText(
-        frame, f'FPS: {fps}', (10, 30),
-        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2
-    )
+def put_fps_stat(frame: np.ndarray) -> None:
+    pass
 
 def start(frames_dir: Path, mode: int) -> None:
     mode = Modes(mode)
@@ -162,6 +124,5 @@ def start(frames_dir: Path, mode: int) -> None:
         cap.release()
         cv2.destroyAllWindows()
 
-
 if __name__ == '__main__':
-    start(frames_dir=FRAMES_DIR, mode=MODE)
+    start(frames_dir=FRAMES_DIR, mode=0b10101)
