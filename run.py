@@ -19,9 +19,11 @@ SAVE_INTERVAL_SECONDS = 30
 SAVE_INTERVAL_IF_NOT_DETECTED_SECONDS = 1
 FAILED_FRAMES = 10
 AVERAGE_QUANTITY_FPS = 10
+RATE = 0.85
+
+IMGSZ = 640
 
 MODE = 0b10111
-
 
 class Modes(IntFlag):
     DETECT = 1                          # 0b00001
@@ -127,7 +129,7 @@ def start(frames_dir: Path, mode: int) -> None:
                 raise Exception("Error! Too many failed frames")
 
             if Modes.DETECT in mode:
-                detect_res = model.predict(frame, conf=0.95, verbose=False)
+                detect_res = model.predict(frame, conf=RATE, verbose=False)
 
             if Modes.FRAME_SAVE_IF_NOT_DETECTED in mode:
                 boxes = [box for result in detect_res for box in result.boxes]
