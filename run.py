@@ -72,6 +72,7 @@ class FrameSaver:
     def smart_save(self, frame: np.ndarray) -> None:
         diff = int(time.time()) - self.last_time
         if diff > self.time_count:
+            self.save(frame)
             self.time_count += math.ceil(diff / 2)
             self.last_time = int(time.time())
 
